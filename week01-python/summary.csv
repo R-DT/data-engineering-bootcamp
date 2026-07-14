@@ -1,0 +1,13 @@
+Metric,Value
+Total Transaction Value,611721.13
+Average Transaction Value,737.90
+Largest Transaction,1493.24
+Smallest Transaction,5.28
+Successful Transactions Count,484
+Failed Transactions Count,166
+Metric,Value
+ATM,117005.33
+Mobile App,115417.75
+POS Terminal,127804.72
+USSD,132104.96
+Web Portal,119388.37
