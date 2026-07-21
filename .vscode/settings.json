@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./fintech-data-platform"
-    ]
+        "./"
+    ],
+    "python.analysis.typeCheckingMode": "standard"
 }
