@@ -21,3 +21,9 @@ data/raw/*
 data/processed/*
 data/reports/*
 !data/**/.gitkeep
+
+# Python Packaging Metadata Cache
+*.egg-info/
+.eggs/
+build/
+dist/
