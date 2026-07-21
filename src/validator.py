@@ -12,7 +12,7 @@ class TransactionValidator:
 
     def validate_transactions(self, df: pd.DataFrame) -> dict[str, pd.Series]:
         """Audits the dataset and isolates rows breaking structural boundaries."""
-        logger.info("Validation Phase: Auditing ledger schema health profiles...")
+        logger.info("Validation Phase: Checking data quality rules...")
         
         # 1. Identify missing amounts
         null_amounts = df["Amount"].isnull()

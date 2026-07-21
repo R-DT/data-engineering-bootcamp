@@ -11,7 +11,7 @@ class TransactionAnalyzer:
         self.settings = settings
 
     def calculate_metrics(self, df: pd.DataFrame) -> dict:
-        logger.info("Analytics Phase: Calculating core metrics profile...")
+        logger.info("Analytics Phase: Calculating transaction metrics and totals...")
         
         if df.empty:
             logger.warning("Analytics Phase: Dataset is empty.")

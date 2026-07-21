@@ -40,7 +40,7 @@ def run_platform_pipeline() -> None:
         sys.exit(exit_code)
 
     # 3. Fallback to Normal ETL Pipeline Run Mode
-    logger.info("=== STARTING REFACTORED FINTECH DATA PLATFORM PIPELINE ===")
+    logger.info("=== === STARTING FINTECH DATA PLATFORM PIPELINE ===")
     try:
         settings = Settings()
         generator = TransactionGenerator(settings)

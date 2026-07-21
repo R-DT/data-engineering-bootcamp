@@ -11,7 +11,7 @@ class TransactionTransformer:
         self.settings = settings
 
     def clean_transactions(self, df: pd.DataFrame, validation_report: dict[str, pd.Series]) -> pd.DataFrame:
-        logger.info("Transform Phase: Repairing data entries...")
+        logger.info("Transform Phase: Cleaning data and repairing anomalies...")
         
         # Apply boolean mask filters to the original dataframe BEFORE index changes happen
         clean_df = df[~validation_report["invalid_currencies"]].copy()
