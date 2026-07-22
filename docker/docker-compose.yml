@@ -13,9 +13,26 @@ services:
       - ../sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d fintech_db"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
+
+  pipeline_app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: fintech_pipeline_container
+    environment:
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_HOST=warehouse_db  # Routes internally through the container network bridge
+      - DB_PORT=5432
+      - DB_NAME=fintech_db
+    volumes:
+      - ../data:/app/data     # Bind mounts data folder to preserve exported CSV/JSON reports
+    depends_on:
+      warehouse_db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
