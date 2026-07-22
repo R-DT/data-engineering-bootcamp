@@ -1,5 +1,6 @@
 ﻿numpy==2.4.6
 pandas==3.0.3
 pytest==9.1.1
+pytest-mock==3.14.0
 SQLAlchemy==2.0.51
 psycopg2-binary==2.9.12
