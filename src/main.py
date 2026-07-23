@@ -1,6 +1,7 @@
 import argparse
 import sys
 import pytest
+import pandas as pd
 from src.config import Settings
 from src.logger import setup_logger
 from src.generator import TransactionGenerator
@@ -41,12 +42,17 @@ def run_platform_pipeline() -> None:
     try:
         # Initialize Settings and Database Infrastructure
         settings = Settings()
-        db_connector = DatabaseConnector()
+        db_connector = DatabaseConnector(settings)
 
         # Run an active health handshake check against your PostgreSQL Docker container
         if not db_connector.test_connection():
             logger.critical("Pipeline execution aborted: Database target is unreachable.")
             sys.exit(1)
+
+        # Defensive Programming: Pre-bind variable scopes to clear unbound warnings
+        raw_data = pd.DataFrame()
+        cleaned_data = pd.DataFrame()
+        metrics: dict = {}
 
         # Dependency Injection Lifecycle
         generator = TransactionGenerator(settings)
@@ -54,8 +60,6 @@ def run_platform_pipeline() -> None:
         validator = TransactionValidator(settings)
         transformer = TransactionTransformer(settings)
         analyzer = TransactionAnalyzer(settings)
-        
-        # Inject BOTH settings and the database connection manager into your loader
         loader = DatabaseLoader(settings, db_connector)
 
         # Operational ETL pipeline run sequence
@@ -66,11 +70,14 @@ def run_platform_pipeline() -> None:
         cleaned_data = transformer.clean_transactions(raw_data, validation_report)
         metrics = analyzer.calculate_metrics(cleaned_data)
         
-        # Persist data assets safely to both file storage and SQL database layers
+        # Persist data assets safely to file storage, SQL, and AWS cloud layers
         loader.save_to_csv(cleaned_data)
-        loader.save_to_parquet(cleaned_data)
+        parquet_path = loader.save_to_parquet(cleaned_data)
         loader.save_json_report(metrics)
         loader.load_to_postgres(cleaned_data)
+        
+        # Stream your compressed Parquet snapshot into your AWS S3 Cloud Lake target
+        loader.upload_to_s3(parquet_path, settings.AWS_S3_PROCESSED_KEY)
         
         logger.info("=== PIPELINE RUN COMPLETE: SUCCESS ===")
 

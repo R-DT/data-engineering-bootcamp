@@ -29,6 +29,9 @@ class Settings:
         self.PROCESSED_DATA_DIR: Path = self.BASE_DIR / "data" / "processed"
         self.REPORTS_DIR: Path = self.BASE_DIR / "data" / "reports"
 
+        #Tracking the .env file path for environment variables
+        self.ENV_FILE_PATH: Path = self.BASE_DIR / ".env"
+
         # Engine Control Parameters
         self.NUMBER_OF_TRANSACTIONS: int = 1000
         self.START_DATE_STR: str = "2026-01-01"
@@ -45,3 +48,9 @@ class Settings:
             TransactionStatus.FAILED.value,
             TransactionStatus.PENDING.value
         ]
+        # AWS Cloud Data Lake Infrastructure Targets
+        self.AWS_S3_BUCKET_NAME: str = "fintech-data-platform-lake"
+        self.AWS_S3_RAW_KEY: str = "raw/transactions.csv"
+        self.AWS_S3_PROCESSED_KEY: str = "processed/cleaned_ledger.parquet"
+
+    

@@ -75,3 +75,36 @@ class DatabaseLoader(FileLoader):
         except Exception as e:
             logger.error(f"Load Phase: Database ingestion failed. Rollback triggered. Details: {str(e)}")
             raise e
+
+    def upload_to_s3(self, local_file_path: str, s3_target_key: str) -> bool:
+        """Streams a local data asset snapshot securely into an AWS S3 cloud storage bucket."""
+        import boto3
+        from botocore.exceptions import NoCredentialsError, ClientError
+
+        logger.info(f"Load Phase: Initiating AWS S3 cloud transfer vector to bucket -> {self.settings.AWS_S3_BUCKET_NAME}")
+        
+        # Initialize the AWS S3 Resource interface client
+        # It automatically looks for system credentials or environment keys securely
+        s3_client = boto3.client("s3")
+        local_path = Path(local_file_path)
+
+        if not local_path.exists():
+            logger.error(f"Load Phase: S3 Upload aborted. Local file not found at {local_file_path}")
+            return False
+
+        try:
+            s3_client.upload_file(
+                Filename=str(local_path),
+                Bucket=self.settings.AWS_S3_BUCKET_NAME,
+                Key=s3_target_key
+            )
+            logger.info(f"Load Phase: Successfully deployed cloud asset -> s3://{self.settings.AWS_S3_BUCKET_NAME}/{s3_target_key}")
+            return True
+        except NoCredentialsError:
+            # Safe production warning layout when running in local development mode without active AWS access tokens
+            logger.warning("Load Phase: AWS credentials missing. Skipping S3 upload. (Perfect for local dev mode)")
+            return False
+        except ClientError as e:
+            logger.error(f"Load Phase: Secure S3 deployment connection dropped. Details: {str(e)}")
+            return False
+
