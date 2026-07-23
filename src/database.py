@@ -1,30 +1,40 @@
 from contextlib import contextmanager
 from os import environ
+from pathlib import Path
 from typing import Generator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
+from src.config import Settings
 from src.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Force populate your runtime dictionary memory from the local .env file profile
-load_dotenv()
-
 class DatabaseConnector:
     """Manages secure connection pooling and safe transactions into PostgreSQL."""
     
-    def __init__(self) -> None:
-        # Load environment variables explicitly
+    def __init__(self, settings: Settings) -> None:
+        # Calculate the absolute project root folder natively from this file's location
+        root_dir = Path(__file__).resolve().parent.parent
+        env_path = root_dir / ".env"
+        
+        # Explicit path-safe loading with forced environment override parameters
+        if env_path.exists():
+            load_dotenv(dotenv_path=str(env_path), override=True)
+        else:
+            logger.warning(f"Database Environment Alert: No local configuration file detected at {env_path}")
+            
+        # Fetch configurations securely out of environment dict layouts
         db_user = environ.get("DB_USER", "postgres")
-        db_pass = environ.get("DB_PASS", "your_secure_password_here")
-        db_host = environ.get("DB_HOST", "localhost")
+        db_pass = environ.get("DB_PASS", "your_secure_password_here") # Default to a placeholder; should be overridden in production 
+        db_host = environ.get("DB_HOST", "localhost")  # Default safely to IPv4 loopback
         db_port = environ.get("DB_PORT", "5432")
         db_name = environ.get("DB_NAME", "fintech_db")
         
-        # Diagnostic print to check environment variable resolution
-        logger.info(f"DIAGNOSTIC - Loaded DB_PASS string length: {len(db_pass)} characters.")
-        logger.info(f"DIAGNOSTIC - Loaded DB_HOST target string: '{db_host}' on port: '{db_port}'")
+        if not db_pass:
+            logger.warning("Database Core Configuration Warning: DB_PASS environment key is currently unset.")
+        
+        logger.info(f"Database Ingestion Engine: Connecting to host '{db_host}' on port '{db_port}'")
         
         self.connection_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
         self.engine = create_engine(
@@ -34,7 +44,7 @@ class DatabaseConnector:
             pool_pre_ping=True
         )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-            
+
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
         """Context manager to ensure transactions are safely committed or rolled back."""
