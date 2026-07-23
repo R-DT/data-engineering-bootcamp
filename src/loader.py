@@ -5,6 +5,7 @@ import pandas as pd
 from sqlalchemy import text
 from src.config import Settings
 from src.database import DatabaseConnector
+from src.repository import TransactionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -38,42 +39,19 @@ class FileLoader:
         return str(destination)
 
 class DatabaseLoader(FileLoader):
-    def __init__(self, settings: Settings, db_connector: DatabaseConnector) -> None:
+    """Handles multi-destination file persistence and relational repository routing."""
+
+    def __init__(self, settings: Settings, repository: TransactionRepository) -> None:
         super().__init__(settings)
-        self.db = db_connector
+        # Inject the Repository Pattern layer directly
+        self.repo = repository
 
-    def load_to_postgres(self, df: pd.DataFrame, table_name: str = "transactions") -> int:
-        """Inserts clean records into PostgreSQL and returns the successful record count."""
-        if df.empty:
-            logger.warning("Load Phase: DataFrame is empty. Skipping database insert.")
-            return 0
-            
-        logger.info(f"Load Phase: Preparing bulk insert for {len(df)} transactions into SQL...")
-        
-        db_ready_df = df.copy()
-        db_ready_df.columns = [
-            "transaction_id", "customer_id", "transaction_type", 
-            "amount", "currency", "channel", "transaction_date", "status"
-        ]
-
+    def load_to_postgres(self, df: pd.DataFrame) -> int:
+        """Delegates relational writes to the database repository subsystem."""
         try:
-            with self.db.get_session() as session:
-                # Use standard Pandas bulk upload logic linked directly to your engine connection
-                db_ready_df.to_sql(
-                    name=table_name,
-                    con=self.db.engine,
-                    if_exists="append",
-                    index=False,
-                    method="multi",
-                    chunksize=500
-                )
-            
-            inserted_records = len(db_ready_df)
-            logger.info(f"Load Phase: Successfully ingested {inserted_records} records into table '{table_name}'.")
-            return inserted_records
-            
+            return self.repo.bulk_insert_transactions(df)
         except Exception as e:
-            logger.error(f"Load Phase: Database ingestion failed. Rollback triggered. Details: {str(e)}")
+            logger.error("Load Phase Exception: Database write intercepted and rolled back.")
             raise e
 
     def upload_to_s3(self, local_file_path: str, s3_target_key: str) -> bool:

@@ -6,6 +6,7 @@ from src.config import Settings
 from src.logger import setup_logger
 from src.generator import TransactionGenerator
 from src.extractor import TransactionExtractor
+from src.repository import TransactionRepository
 from src.validator import TransactionValidator
 from src.transformer import TransactionTransformer
 from src.analyzer import TransactionAnalyzer
@@ -54,13 +55,17 @@ def run_platform_pipeline() -> None:
         cleaned_data = pd.DataFrame()
         metrics: dict = {}
 
-        # Dependency Injection Lifecycle
+        # Dependency Injection Lifecycle Architecture
         generator = TransactionGenerator(settings)
         extractor = TransactionExtractor(settings)
         validator = TransactionValidator(settings)
         transformer = TransactionTransformer(settings)
         analyzer = TransactionAnalyzer(settings)
-        loader = DatabaseLoader(settings, db_connector)
+        
+        # Instantiate your repository and inject it straight into your loader
+        repository = TransactionRepository(db_connector)
+        loader = DatabaseLoader(settings, repository)
+
 
         # Operational ETL pipeline run sequence
         generator.generate_transactions()
