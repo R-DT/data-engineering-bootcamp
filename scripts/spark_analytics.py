@@ -9,7 +9,6 @@ logger = logging.getLogger("pyspark_analytics_engine")
 def run_distributed_analytics() -> None:
     logger.info("Initializing Distributed Spark Session Engine...")
     
-    # Initialize local cluster context
     spark = SparkSession.builder \
         .appName("FintechPlatformSparkAnalytics") \
         .master("local[*]") \
@@ -20,7 +19,7 @@ def run_distributed_analytics() -> None:
     try:
         base_dir = Path(__file__).resolve().parent.parent
         parquet_source = base_dir / "data" / "processed" / "cleaned_ledger.parquet"
-        report_destination = base_dir / "data" / "reports" / "spark_channel_metrics.csv"
+        report_destination = base_dir / "data" / "reports" / "spark_channel_metrics"
 
         if not parquet_source.exists():
             raise FileNotFoundError(f"Distributed Ingestion Error: Target Parquet asset not found at {parquet_source}")
@@ -35,19 +34,29 @@ def run_distributed_analytics() -> None:
             avg("Amount").alias("average_transaction_value")
         ).orderBy(col("gross_volume_usd").desc())
 
-        # Display calculation result summary directly to your terminal panel screen
         logger.info("Distributed Calculation Success. Result Ledger Snapshot:")
         channel_metrics.show(truncate=False)
 
-        # WINDOWS WORKAROUND: Pull aggregated rows to driver memory and save via Pandas to bypass Hadoop winutils.exe
-        logger.info("Converting calculated metrics to Pandas DataFrame for local Windows storage write...")
-        pandas_report = channel_metrics.toPandas()
-        
-        # Ensure target folder structures exist using pathlib boundaries
-        report_destination.parent.mkdir(parents=True, exist_ok=True)
-        pandas_report.to_csv(report_destination, index=False)
-        
-        logger.info(f"PySpark Analytical Run Complete. Clean CSV report written safely to -> {report_destination}")
+        try:
+            # 1. Attempt production-grade columnar partitioning natively (Works inside Linux Docker/Airflow)
+            logger.info(f"Attempting native Parquet folder partitioning -> {report_destination}")
+            channel_metrics.write \
+                .mode("overwrite") \
+                .partitionBy("Channel") \
+                .parquet(str(report_destination))
+            logger.info("Native big-data folder partitioning completed successfully.")
+            
+        except Exception as write_err:
+            # 2. Windows Fallback Workaround: Collect to driver memory safely if Hadoop blocks write paths
+            logger.warning(f"Native folder partition blocked by local host file system: {str(write_err)}")
+            logger.info("Triggering driver-side memory fallback write routine...")
+            
+            csv_backup = base_dir / "data" / "reports" / "spark_channel_metrics.csv"
+            csv_backup.parent.mkdir(parents=True, exist_ok=True)
+            
+            pandas_df = channel_metrics.toPandas()
+            pandas_df.to_csv(csv_backup, index=False)
+            logger.info(f"Fallback Execution Success: Clean metrics written to file -> {csv_backup}")
 
     except Exception as e:
         logger.error(f"PySpark processing engine encountered a critical disruption: {str(e)}", exc_info=True)
